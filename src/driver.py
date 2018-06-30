@@ -6,9 +6,12 @@ original_path = '/Users/ac/Documents/2oq-c1r.csv'
 reduced_to_original_image_path = '../reduced_data/reduced_to_original_image_url.csv'
 duplicate_image_url_json_path = '../reduced_data/duplicate_image_url.json'
 reduced_image_url_json_path = '../reduced_data/reduced_duplicate_image_url.json'
+reduced_drop_duplicate_rows_path = '../reduced_data/reduced_drop_duplicate_rows.csv'
 
-# Code snippet to reduce the size of dataset by shortening imageURLString
-# Reduced from around 6GB to 4.4GB
+"""
+Code snippet to reduce the size of dataset by shortening imageURLString
+Reduced from around 6GB to 4.4GB
+"""
 # for smallchunk in data_parser.csv_reader(original_path, chunksize=10**4):
 #     smallchunk['imageUrlStr'] = data_parser.shorten_imageURLString(smallchunk)
 #     data_parser.csv_writer_append(reduced_to_original_image_path, smallchunk)
@@ -45,3 +48,24 @@ Remove all entries from duplicate_image_url_json_path that does not repeat
 #
 # with open(reduced_image_url_json_path, 'w') as fp:
 #     json.dump(duplicate_image_url_dict, fp)
+
+"""
+Drop rows from dataset that have same image url and write to new csv file.
+Took about 10 mins to execute and reduced dataset size to 1.3GB
+"""
+with open(reduced_image_url_json_path) as fp:
+    reduced_image_url_dict = json.load(fp)
+
+loop_counter = 0
+for smallchunk in data_parser.csv_reader(reduced_to_original_image_path, chunksize=10**4):
+    smallchunk_backup = smallchunk
+    indexes_to_drop = []
+    for index, row in smallchunk.iterrows():
+        if row['imageUrlStr'] in reduced_image_url_dict:
+            indexes_to_drop_temp = reduced_image_url_dict[row['imageUrlStr']][1:]
+            for potential_drop_index in indexes_to_drop_temp:
+                if potential_drop_index in range(loop_counter*(10**4), 9999 + loop_counter*(10**4)):
+                    indexes_to_drop.append(potential_drop_index - (loop_counter*(10**4)))
+    smallchunk_backup.drop(smallchunk_backup.index[list(set(indexes_to_drop))], inplace=True)
+    data_parser.csv_writer_append(reduced_drop_duplicate_rows_path, smallchunk_backup)
+    loop_counter += 1
